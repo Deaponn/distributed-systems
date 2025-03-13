@@ -1,6 +1,4 @@
-import java.io.BufferedReader;
-import java.io.IOException;
-import java.io.InputStreamReader;
+import java.io.*;
 import java.net.DatagramPacket;
 import java.net.DatagramSocket;
 import java.net.ServerSocket;
@@ -40,12 +38,11 @@ public class ChatServer {
             }
         } catch (IOException e) {
             e.printStackTrace();
-        }
-        finally{
-            if (tcpSocket != null){
+        } finally {
+            if (tcpSocket != null) {
                 tcpSocket.close();
             }
-            if (udpSocket != null){
+            if (udpSocket != null) {
                 udpSocket.close();
             }
         }
@@ -61,15 +58,14 @@ public class ChatServer {
                 try {
                     udpSocket.receive(receivePacket);
 
-                    DatagramPacket responsePacket = new DatagramPacket(buffer, buffer.length, receivePacket.getAddress(), receivePacket.getPort());
                     connections.forEverySocket((nickname, socket) -> {
                         if (socket.getPort() == receivePacket.getPort()) {
-                            System.out.println("Propagating UDP byte data from: " + nickname);
+                            System.out.println("Received UDP message from: " + nickname);
                             return;
                         }
                         try {
-                            responsePacket.setAddress(socket.getInetAddress());
-                            responsePacket.setPort(socket.getPort());
+                            byte[] newBuffer = modifyBufferToIncludeNickname(buffer, nickname);
+                            DatagramPacket responsePacket = new DatagramPacket(newBuffer, newBuffer.length, socket.getInetAddress(), socket.getPort());
                             udpSocket.send(responsePacket);
                         } catch (IOException e) {
                             throw new RuntimeException(e);
@@ -80,5 +76,29 @@ public class ChatServer {
                 }
             }
         });
+    }
+
+    private static byte[] modifyBufferToIncludeNickname(byte[] buffer, String nickname) {
+        String padding = "+".repeat((18 - nickname.length()) / 2);
+        nickname = String.format("%18s", padding + nickname + padding).replace(" ", "+");
+
+        ByteArrayInputStream byteInputStream = new ByteArrayInputStream(buffer);
+        DataInputStream byteInput = new DataInputStream(byteInputStream);
+
+        ByteArrayOutputStream byteStream = new ByteArrayOutputStream();
+        DataOutputStream byteOutput = new DataOutputStream(byteStream);
+        while (true) {
+            try {
+                if (!(byteInput.available() > 0)) break;
+                String element = byteInput.readUTF();
+                if (element.isEmpty()) break;
+                element = element.replace("++++++++++++++++++", nickname);
+                byteOutput.writeUTF(element);
+            } catch (IOException e) {
+                throw new RuntimeException(e);
+            }
+        }
+
+        return byteStream.toByteArray();
     }
 }

@@ -20,12 +20,15 @@ public class Client {
 
         System.out.println("Please provide a nickname");
         String nickname = keyboard.nextLine();
+        String padding = "=".repeat((18 - nickname.length()) / 2);
+        String paddedNickname = String.format("%18s", padding + nickname + padding).replace(" ", "=");
 
         List<String> art = Files.readAllLines(Paths.get("./image.txt"));
 
         ByteArrayOutputStream byteStream = new ByteArrayOutputStream();
         DataOutputStream byteOutput = new DataOutputStream(byteStream);
         for (String element : art) {
+            element = element.replace("==================", paddedNickname);
             byteOutput.writeUTF(element);
         }
         byte[] buffer = byteStream.toByteArray();
