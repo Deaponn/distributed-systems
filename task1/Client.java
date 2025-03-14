@@ -1,8 +1,5 @@
 import java.io.*;
-import java.net.DatagramPacket;
-import java.net.DatagramSocket;
-import java.net.InetAddress;
-import java.net.Socket;
+import java.net.*;
 import java.nio.file.Files;
 import java.nio.file.Paths;
 import java.util.List;
@@ -13,9 +10,11 @@ public class Client {
         System.out.println("JAVA TCP CLIENT");
         String hostName = "localhost";
         InetAddress address = InetAddress.getByName(hostName);
+        InetAddress multicastGroup = InetAddress.getByName("224.0.0.1");
         int portNumber = 12345;
         Socket tcpSocket = null;
         DatagramSocket udpSocket = null;
+        MulticastSocket multicastSocket = null;
         Scanner keyboard = new Scanner(System.in);
 
         System.out.println("Please provide a nickname");
@@ -25,16 +24,22 @@ public class Client {
 
         List<String> art = Files.readAllLines(Paths.get("./image.txt"));
 
-        ByteArrayOutputStream byteStream = new ByteArrayOutputStream();
-        DataOutputStream byteOutput = new DataOutputStream(byteStream);
+        ByteArrayOutputStream serverByteStream = new ByteArrayOutputStream();
+        DataOutputStream serverByteOutput = new DataOutputStream(serverByteStream);
+        ByteArrayOutputStream multicastByteStream = new ByteArrayOutputStream();
+        DataOutputStream multicastByteOutput = new DataOutputStream(multicastByteStream);
         for (String element : art) {
             element = element.replace("==================", paddedNickname);
-            byteOutput.writeUTF(element);
+            serverByteOutput.writeUTF(element);
+            multicastByteOutput.writeUTF(element.replace("++++++++++++++++++", "+++++multicast++++"));
         }
-        byte[] buffer = byteStream.toByteArray();
+        byte[] serverArt = serverByteStream.toByteArray();
+        byte[] multicastArt = multicastByteStream.toByteArray();
 
         try {
             tcpSocket = new Socket(hostName, portNumber);
+            multicastSocket = new MulticastSocket(portNumber + 1);
+            multicastSocket.joinGroup(new InetSocketAddress(multicastGroup, portNumber), null);
 
             // in & out streams
             PrintWriter out = new PrintWriter(tcpSocket.getOutputStream(), true);
@@ -46,10 +51,12 @@ public class Client {
 
             Socket finalTcpSocket = tcpSocket;
             DatagramSocket finalUdpSocket = udpSocket;
+            MulticastSocket finalMulticastSocket = multicastSocket;
             Runtime.getRuntime().addShutdownHook(new Thread(() -> {
                 try {
                     finalTcpSocket.close();
                     finalUdpSocket.close();
+                    finalMulticastSocket.close();
                 } catch (IOException e) {
                     throw new RuntimeException(e);
                 }
@@ -59,9 +66,16 @@ public class Client {
                 while (true) {
                     String message = keyboard.nextLine();
                     if (message.equals("U")) {
-                        DatagramPacket sendPacket = new DatagramPacket(buffer, buffer.length, address, portNumber);
+                        DatagramPacket sendPacket = new DatagramPacket(serverArt, serverArt.length, address, portNumber);
                         try {
                             finalUdpSocket.send(sendPacket);
+                        } catch (IOException e) {
+                            throw new RuntimeException(e);
+                        }
+                    } else if (message.equals("M")) {
+                        DatagramPacket sendPacket = new DatagramPacket(multicastArt, multicastArt.length, multicastGroup, portNumber + 1);
+                        try {
+                            finalMulticastSocket.send(sendPacket);
                         } catch (IOException e) {
                             throw new RuntimeException(e);
                         }
@@ -98,8 +112,36 @@ public class Client {
                 }
             });
 
+            Thread multicastReceiver = new Thread(() -> {
+                while (true) {
+                    byte[] receiveBuffer = new byte[65507];
+                    DatagramPacket receivePacket = new DatagramPacket(receiveBuffer, receiveBuffer.length);
+                    try {
+                        finalMulticastSocket.receive(receivePacket);
+                    } catch (IOException e) {
+                        throw new RuntimeException(e);
+                    }
+
+                    System.out.println("Received " + receivePacket.getData().length + " bytes of raw data");
+
+                    ByteArrayInputStream byteInputStream = new ByteArrayInputStream(receivePacket.getData());
+                    DataInputStream byteInput = new DataInputStream(byteInputStream);
+                    while (true) {
+                        try {
+                            if (!(byteInput.available() > 0)) break;
+                            String element = byteInput.readUTF();
+                            if (element.isEmpty()) break;
+                            System.out.println(element);
+                        } catch (IOException e) {
+                            throw new RuntimeException(e);
+                        }
+                    }
+                }
+            });
+
             inputHandler.start();
             udpReceiver.start();
+            multicastReceiver.start();
 
             while (true) {
                 System.out.println(in.readLine());
@@ -107,11 +149,14 @@ public class Client {
         } catch (Exception e) {
             e.printStackTrace();
         } finally {
-            if (tcpSocket != null){
+            if (tcpSocket != null) {
                 tcpSocket.close();
             }
-            if (udpSocket != null){
+            if (udpSocket != null) {
                 udpSocket.close();
+            }
+            if (multicastSocket != null) {
+                multicastSocket.close();
             }
         }
     }
