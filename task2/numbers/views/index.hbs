@@ -1,6 +1,19 @@
-<p>Hello, my name is {{name}}. I am from {{hometown}}. I have {{kids.length}} kids:</p>
-<ul>
-  {{#kids}}
-  <li>{{name}} is {{age}}</li>
-  {{/kids}}
-</ul>
+<script src=" https://cdn.jsdelivr.net/npm/mathjax@3.2.2/es5/tex-mml-chtml.min.js "></script>
+<script src="./script.js"></script>
+<link rel="stylesheet" type="text/css" href="./style.css">
+<title>Kalkulator</title>
+
+<h1>Kalkulator generujący ciekawostki o wyniku</h1>
+<form action="result">
+    <label for="equation">Wpisz równanie matematyczne</label>
+    <input
+        type="text"
+        id="equation"
+        name="equation"
+        oninput="updateMath()"
+        value="((2 +3)*(5-10)+12)/99"
+    />
+    <input type="submit" value="Oblicz" />
+</form>
+<h3 id="math"></h3>
+<p>Legalne symbole matematyczne: $$+,~-,~\cdot,~\div$$</p>

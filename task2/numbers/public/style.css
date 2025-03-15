@@ -1,0 +1,9 @@
+body {
+    width: 40%;
+    margin: auto;
+    padding-top: 36px;
+}
+
+p .MathJax {
+    text-align: left !important;
+}
