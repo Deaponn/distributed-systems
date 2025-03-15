@@ -22,7 +22,7 @@ public class TcpClientThread implements Runnable {
                 String msg = this.input.readLine();
                 if (msg == null) break;
                 System.out.println("Received Tcp message " + msg + " from " + this.nickname);
-                this.connections.forEveryTcpConnection((nick, writer) -> {
+                this.connections.forEveryConnection((nick, writer) -> {
                     if (Objects.equals(nick, this.nickname)) return;
                     System.out.println("    Sending the above message to " + nick);
                     writer.println(nickname + ": " + msg);

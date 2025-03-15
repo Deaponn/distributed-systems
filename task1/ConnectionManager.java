@@ -7,56 +7,56 @@ import java.util.concurrent.locks.ReentrantLock;
 import java.util.function.BiConsumer;
 
 public class ConnectionManager {
-    private final HashMap<String, Socket> tcpSockets = new HashMap<>();
-    private final HashMap<String, PrintWriter> tcpWriters = new HashMap<>();
-    private final ReentrantLock tcpLock = new ReentrantLock();
+    private final HashMap<String, Socket> sockets = new HashMap<>();
+    private final HashMap<String, PrintWriter> writers = new HashMap<>();
+    private final ReentrantLock lock = new ReentrantLock();
 
-    public void forEveryTcpConnection(BiConsumer<String, PrintWriter> callback) {
+    public void forEveryConnection(BiConsumer<String, PrintWriter> callback) {
         try {
-            this.tcpLock.lock();
-            for (Map.Entry<String, PrintWriter> entry : this.tcpWriters.entrySet()) {
+            this.lock.lock();
+            for (Map.Entry<String, PrintWriter> entry : this.writers.entrySet()) {
                 callback.accept(entry.getKey(), entry.getValue());
             }
         } finally {
-            this.tcpLock.unlock();
+            this.lock.unlock();
         }
     }
 
     public void forEverySocket(BiConsumer<String, Socket> callback) {
         try {
-            this.tcpLock.lock();
-            for (Map.Entry<String, Socket> entry : this.tcpSockets.entrySet()) {
+            this.lock.lock();
+            for (Map.Entry<String, Socket> entry : this.sockets.entrySet()) {
                 callback.accept(entry.getKey(), entry.getValue());
             }
         } finally {
-            this.tcpLock.unlock();
+            this.lock.unlock();
         }
     }
 
     public String addConnection(String nickname, Socket tcpSocket) throws IOException {
         try {
-            this.tcpLock.lock();
+            this.lock.lock();
             PrintWriter writer = new PrintWriter(tcpSocket.getOutputStream(), true);
             writer.println(tcpSocket.getPort());
-            if (this.tcpSockets.containsKey(nickname)) nickname = nickname + tcpSocket.getPort();
-            this.tcpSockets.put(nickname, tcpSocket);
-            this.tcpWriters.put(nickname, writer);
+            if (this.sockets.containsKey(nickname)) nickname = nickname + tcpSocket.getPort();
+            this.sockets.put(nickname, tcpSocket);
+            this.writers.put(nickname, writer);
         } finally {
-            this.tcpLock.unlock();
+            this.lock.unlock();
         }
         return nickname;
     }
 
     public void removeConnection(String nickname) {
         try {
-            this.tcpLock.lock();
-            this.tcpSockets.get(nickname).close();
-            this.tcpSockets.remove(nickname);
-            this.tcpWriters.remove(nickname);
+            this.lock.lock();
+            this.sockets.get(nickname).close();
+            this.sockets.remove(nickname);
+            this.writers.remove(nickname);
         } catch (IOException e) {
             throw new RuntimeException(e);
         } finally {
-            this.tcpLock.unlock();
+            this.lock.unlock();
         }
     }
 }

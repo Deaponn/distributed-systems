@@ -26,15 +26,15 @@ public class ChatServer {
             System.out.println("CHAT SERVER RUNNING");
 
             while (true) {
-                Socket tcpClientSocket = tcpSocket.accept();
+                Socket clientSocket = tcpSocket.accept();
 
-                BufferedReader reader = new BufferedReader(new InputStreamReader(tcpClientSocket.getInputStream()));
+                BufferedReader reader = new BufferedReader(new InputStreamReader(clientSocket.getInputStream()));
                 String nickname = reader.readLine();
 
-                final String finalNickname = connections.addConnection(nickname, tcpClientSocket);
-                TcpClientThread tcpClient = new TcpClientThread(finalNickname, reader, connections);
+                final String finalNickname = connections.addConnection(nickname, clientSocket);
+                TcpClientThread client = new TcpClientThread(finalNickname, reader, connections);
 
-                threadPool.submit(tcpClient);
+                threadPool.submit(client);
             }
         } catch (IOException e) {
             e.printStackTrace();
