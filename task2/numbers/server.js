@@ -13,11 +13,11 @@ app.engine('.hbs', engine({
 app.set('view engine', '.hbs');
 
 app.get('/', (req, res) => {
-    res.render('index', { "layout": "index" });
+    res.render('index');
 });
 
 app.get('/result', (req, res) => {
-    res.render('result', { "layout": "result", "result": req.query.equation });
+    res.render('result', { "result": req.query.equation });
 });
 
 app.listen(port, () => {
