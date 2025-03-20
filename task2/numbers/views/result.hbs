@@ -1,3 +1,46 @@
-<h2>Wynik działania to:</h2>
-<h1>{{result}}</h1>
-<p>Dziękuję za korzystanie z serwisu</p>
+<section>
+    <h4>Wynik działania to:</h4>
+    <hr/>
+        {{equation}} =
+        <h1>{{result}}</h1>
+        <em>
+            {{disclaimer}}
+        </em>
+    <hr/>
+</section>
+<section>
+    <p>
+        Kilka ciekawostek o wyniku:<br>
+        Zapis binarny to {{inBinary}}<br>
+        Zapis słowny to {{inWords}}<br>
+        Liczba ta jest {{isEven}}
+    </p>
+    <div>
+        Kilka faktów:
+        <ul>
+            {{#each facts}}
+                <li>{{this}}</li>
+            {{/each}}
+        </ul>
+    </div>
+    <p class="advert">
+        <em>
+            Krótka reklama pozwala na dalsze działanie serwisu
+        </em><br/>
+        <strong>
+            {{advertisement}}
+        </strong>
+    </p>
+    <p>
+        Krótka historyjka:<br>
+        {{story}}
+    </p>
+    <details>
+        <summary>Użyty prompt:</summary>
+        {{prompt}}
+    </details>
+</section>
+<hr/>
+<section>
+    Dziękuję za korzystanie z serwisu
+</section>
