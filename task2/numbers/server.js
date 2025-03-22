@@ -2,6 +2,7 @@ import express from "express";
 import { engine } from "express-handlebars";
 import dotenv from "dotenv";
 import { GoogleGenerativeAI } from "@google/generative-ai";
+import { parseInBinary, parseInWords, mockInBinary, mockInWords, validateInput } from "./helpers.js";
 
 const { parsed: env } = dotenv.config();
 
@@ -27,6 +28,11 @@ app.get("/", (req, res) => {
 });
 
 app.get("/result", (req, res) => {
+    const [result, error] = validateInput(req.query.equation);
+    if (!result) {
+        res.status(400);
+        return res.render("failure", { errorCode: 400, errorMessage: error });
+    }
     computeResult(req.query.equation, res);
 });
 
@@ -87,68 +93,4 @@ async function computeResult(equation, res) {
         story,
         prompt,
     });
-}
-
-const mockInBinary = (url) =>
-    new Promise((resolve, reject) => {
-        setTimeout(() => {
-            resolve({
-                text: () =>
-                    Promise.resolve(
-                        JSON.stringify({
-                            success: {
-                                total: 1,
-                            },
-                            copyright: {
-                                copyright: "2019-21 https://math.tools",
-                            },
-                            contents: {
-                                number: 15,
-                                base: {
-                                    from: 10,
-                                    to: 2,
-                                },
-                                answer: "1111",
-                            },
-                        })
-                    ),
-            });
-        }, 300);
-    });
-
-const mockInWords = (url) =>
-    new Promise((resolve, reject) => {
-        setTimeout(() => {
-            resolve({
-                text: () =>
-                    Promise.resolve(
-                        JSON.stringify({
-                            success: {
-                                total: 1,
-                            },
-                            copyright: {
-                                copyright: "2019-21 https://math.tools",
-                            },
-                            contents: {
-                                number: 10,
-                                language: "en_US",
-                                result: "ten",
-                                cardinal: "ten",
-                            },
-                        })
-                    ),
-            });
-        }, 300);
-    });
-
-const parseInBinary = (result) => {
-    const parsed = JSON.parse(result);
-    if (parsed.error != undefined) return `HTML Return code ${parsed.error.code}: ${parsed.error.message}`;
-    return parsed.contents.answer;
-}
-
-const parseInWords = (result) => {
-    const parsed = JSON.parse(result);
-    if (parsed.error != undefined) return `HTML Return code ${parsed.error.code}: ${parsed.error.message}`;
-    return parsed.contents.result;
 }
