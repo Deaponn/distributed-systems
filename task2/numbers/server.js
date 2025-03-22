@@ -2,7 +2,14 @@ import express from "express";
 import { engine } from "express-handlebars";
 import dotenv from "dotenv";
 import { GoogleGenerativeAI } from "@google/generative-ai";
-import { parseInBinary, parseInWords, mockInBinary, mockInWords, validateInput } from "./helpers.js";
+import {
+    parseInBinary,
+    parseInWords,
+    validateInput,
+    applyElementwise,
+    parseFact,
+    parseIsEven
+} from "./helpers.js";
 
 const { parsed: env } = dotenv.config();
 
@@ -44,21 +51,24 @@ async function computeResult(equation, res) {
     const query = await fetch(
         `https://newton.now.sh/api/v2/simplify/${encodeURIComponent(equation)}`
     );
-    if (!query.ok) {
-        return res.render("failure", {
-            errorCode: query.status,
-            errorMessage: "Could not calculate the result",
-        });
-    }
     
     const { result } = await query.json();
+    
+    if (!query.ok || result.includes("?")) {
+        res.status(400);
+        return res.render("failure", {
+            errorCode: 400,
+            errorMessage: "Zewnętrzny serwis nie mógł obliczyć wyniku",
+        });
+    }
+
     const sanitizedResult = !Number.isNaN(Number(result)) ? Number(result) : 5;
     const wholeResult = Math.round(sanitizedResult);
     const naturalResult = Math.abs(wholeResult);
 
     const response = await Promise.all([
-        await mockInBinary(`https://api.math.tools/numbers/base/binary?number=${wholeResult}`),
-        await mockInWords(`https://api.math.tools/numbers/cardinal?number=${wholeResult}`),
+        await fetch(`https://api.math.tools/numbers/base/binary?number=${wholeResult}`),
+        await fetch(`https://api.math.tools/numbers/cardinal?number=${wholeResult}`),
         await fetch(`http://numbersapi.com/${wholeResult}/trivia`),
         await fetch(`http://numbersapi.com/${wholeResult}/math`),
         await fetch(`http://numbersapi.com/${wholeResult}/year`),
@@ -66,29 +76,39 @@ async function computeResult(equation, res) {
     ]);
 
     const [inBinary, inWords, triviaFact, mathFact, yearFact, isEven] = await Promise.all(
-        response.map((v) => v.text())
+        applyElementwise(response, [
+            parseInBinary,
+            parseInWords,
+            parseFact,
+            parseFact,
+            parseFact,
+            parseIsEven
+        ])
     );
 
-    const prompt = `Write me a short story using these three facts about number ${wholeResult}:
+    const prompt = `Napisz krótką historyjkę wykorzystując następujące fakty na temat liczby ${wholeResult}:
     * ${triviaFact}
     * ${mathFact}
     * ${yearFact}
-    Dont make it too long, 5 phrases is enough.
+    Niech historyjka będzie po polsku, niezbyt długa. Do 5 zdań.
     `;
 
     const output = await model.generateContent(prompt);
     const story = output.response.text();
 
+    const disclaimer = Number.isNaN(Number(result))
+        ? `Do dalszych zapytań API wykorzystano liczbę ${wholeResult},
+        ponieważ wynik zwrócony pierwszym zapytaniem daje NaN przy użyciu Number(result)`
+        : "";
+
     res.render("result", {
         equation,
         result,
-        disclaimer: Number.isNaN(Number(result))
-            ? `Do dalszych zapytań API wykorzystano liczbę ${wholeResult}, ponieważ wynik zwrócony pierwszym zapytaniem daje NaN przy użyciu Number(result)`
-            : "",
-        inBinary: parseInBinary(inBinary),
-        inWords: parseInWords(inWords),
-        isEven: JSON.parse(isEven).iseven ? "parzysta" : "nieparzysta",
-        advertisement: JSON.parse(isEven).ad,
+        disclaimer,
+        inBinary,
+        inWords,
+        isEven: isEven.iseven,
+        advertisement: isEven.ad,
         facts: [triviaFact, mathFact, yearFact],
         story,
         prompt,

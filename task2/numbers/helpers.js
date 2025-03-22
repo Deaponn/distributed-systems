@@ -1,67 +1,34 @@
-export const mockInBinary = (url) =>
-    new Promise((resolve, reject) => {
-        setTimeout(() => {
-            resolve({
-                text: () =>
-                    Promise.resolve(
-                        JSON.stringify({
-                            success: {
-                                total: 1,
-                            },
-                            copyright: {
-                                copyright: "2019-21 https://math.tools",
-                            },
-                            contents: {
-                                number: 15,
-                                base: {
-                                    from: 10,
-                                    to: 2,
-                                },
-                                answer: "1111",
-                            },
-                        })
-                    ),
-            });
-        }, 300);
-    });
-
-export const mockInWords = (url) =>
-    new Promise((resolve, reject) => {
-        setTimeout(() => {
-            resolve({
-                text: () =>
-                    Promise.resolve(
-                        JSON.stringify({
-                            success: {
-                                total: 1,
-                            },
-                            copyright: {
-                                copyright: "2019-21 https://math.tools",
-                            },
-                            contents: {
-                                number: 10,
-                                language: "en_US",
-                                result: "ten",
-                                cardinal: "ten",
-                            },
-                        })
-                    ),
-            });
-        }, 300);
-    });
-
-export const parseInBinary = (result) => {
-    const parsed = JSON.parse(result);
-    if (parsed.error != undefined)
-        return `HTML Return code ${parsed.error.code}: ${parsed.error.message}`;
-    return parsed.contents.answer;
+export const parseInBinary = async (response) => {
+    const result = await response.json();
+    if (response.status >= 400)
+        return Promise.resolve(`HTML Return code ${result.error.code}: ${result.error.message}`);
+    return Promise.resolve(result.contents.answer);
 };
 
-export const parseInWords = (result) => {
-    const parsed = JSON.parse(result);
-    if (parsed.error != undefined)
-        return `HTML Return code ${parsed.error.code}: ${parsed.error.message}`;
-    return parsed.contents.result;
+export const parseInWords = async (response) => {
+    const result = await response.json();
+    if (response.status >= 400)
+        return Promise.resolve(`HTML Return code ${result.error.code}: ${result.error.message}`);
+    return Promise.resolve(result.contents.result);
+};
+
+export const parseFact = async (response) => {
+    const text = await response.text();
+    if (response.status >= 400)
+        return Promise.resolve(
+            `Błąd uzyskania odpowiedzi z zewnętrznego API z kodem ${response.status}, treść: ${text}`
+        );
+    return Promise.resolve(text);
+};
+
+export const parseIsEven = async (response) => {
+    const json = await response.json();
+    if (response.status >= 400)
+        return Promise.resolve({
+            iseven: `Błąd uzyskania odpowiedzi z zewnętrznego API z kodem ${response.status}, treść: ${json.error}`,
+            ad: `Błąd uzyskania odpowiedzi z zewnętrznego API z kodem ${response.status}, treść: ${json.error}`,
+        });
+    return Promise.resolve({...json, iseven: `Liczba ta jest ${json.iseven ? "parzysta" : "nieparzysta"}`});
 };
 
 const numberCharacters = "0123456789";
@@ -82,23 +49,35 @@ export const validateInput = (input) => {
         if (operationCharacters.includes(input[i - 1]) && operationCharacters.includes(input[i]))
             return [
                 false,
-                `Symbole matematyczne sąsiadują ze sobą: '${input[i - 1]}${input[i]}' pod indeksem ${i - 1}`,
+                `Symbole matematyczne sąsiadują ze sobą: '${input[i - 1]}${
+                    input[i]
+                }' pod indeksem ${i - 1}`,
             ];
         if (input[i] == "(") openParenthesis++;
         if (input[i] == ")") openParenthesis--;
         if (openParenthesis < 0)
-            return [false, `Nawias zamykający bez poprzedzającego nawiasu otwierającego pod indeksem ${i}`];
+            return [
+                false,
+                `Nawias zamykający bez poprzedzającego nawiasu otwierającego pod indeksem ${i}`,
+            ];
         if (
             (input[i - 1] == ")" && numberCharacters.includes(input[i])) ||
             (numberCharacters.includes(input[i - 1]) && input[i] == "(")
         )
-            return [false, `Brak operacji matematycznej między nawiasem a liczbą pod indeksem ${i}`];
+            return [
+                false,
+                `Brak operacji matematycznej między nawiasem a liczbą pod indeksem ${i}`,
+            ];
         if (
             (input[i - 1] == "(" && operationCharacters.includes(input[i])) ||
             (operationCharacters.includes(input[i - 1]) && input[i] == ")")
         )
             return [false, `Brak liczby między nawiasem a operacją matematyczną pod indeksem ${i}`];
     }
-    if (openParenthesis > 0) return [false, "Zbyt dużo otwartych nawiasów, nie wszystkie zostały zamknięte"];
+    if (openParenthesis > 0)
+        return [false, "Zbyt dużo otwartych nawiasów, nie wszystkie zostały zamknięte"];
     return [true, "ok"];
 };
+
+export const applyElementwise = (elements, functions) =>
+    elements.map((element, idx) => functions[idx](element));
