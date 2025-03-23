@@ -24,3 +24,5 @@ export const validateToken = (wholeJwt, secret) => {
 
     return [true, JSON.parse(base64.decode(jwt_base64))];
 };
+
+export const getUUID = () => crypto.randomUUID();

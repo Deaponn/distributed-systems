@@ -11,13 +11,16 @@ import {
     parseFact,
     parseIsEven,
 } from "./helpers.js";
-import { createToken, validateToken } from "./cryptography.js";
+import { createToken, validateToken, getUUID } from "./cryptography.js";
+import RateLimitter from "./RateLimitter.js";
 
 const { parsed: env } = dotenv.config();
 
 const secret = env.SERVER_SECRET;
 const genAI = new GoogleGenerativeAI(env.GEMINI_API_KEY);
 const model = genAI.getGenerativeModel({ model: "gemini-1.5-flash" });
+
+const rateLimitter = new RateLimitter(env.RATE_LIMIT, env.PURGE_TIME);
 
 const app = express();
 const port = 3000;
@@ -52,6 +55,10 @@ app.use("/result", (req, res, next) => {
         return res.render("failure", { errorCode: 401, errorMessage: `Nie masz dostępu do tej strony. ${jwt.error}. Zdobądź klucz do API pod adresem ${tokenUrl}.` })
     }
 
+    if (!rateLimitter.rateRequest(jwt)) {
+        return res.render("failure", { errorCode: 429, errorMessage: `Nie masz dostępu do tej strony. Przekroczono limit ${jwt.rateLimit} zapytań na ${env.RATE_LIMIT} sekund.` })
+    }
+
     req.jwt = jwt;
     next();
 });
@@ -72,6 +79,7 @@ app.get("/token", (req, res) => {
     const jwt = {
         iat: now,
         eat: now + validFor,
+        uid: getUUID(),
         rateLimit,
     };
 
