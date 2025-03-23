@@ -1,0 +1,95 @@
+openapi: 3.0.0
+info:
+  version: "1.0.0"
+  title: Simple Calculator API
+tags:
+  - name: all
+    description: Everyone can access
+  - name: jwt
+    description: Only people with valid JWT can access
+paths:
+  /:
+    get:
+      tags:
+        - all
+      summary: Renders index.html into browser window
+      responses:
+        '200':
+          description: rendered html view of index page
+          content:
+            text/html:
+              schema:
+                type: string
+  /result:
+    get:
+      tags:
+        - jwt
+      summary: Shows result of input equation
+      parameters:
+        - in: query
+          name: equation
+          description: equation to solve, encoded URI
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: rendered html view of result page containing various info
+          content:
+            text/html:
+              schema:
+                type: string
+        '400':
+          description: bad equation structure
+          content:
+            text/html:
+              schema:
+                type: string
+        '401':
+          description: no JWT was supplied, the original JWT was modified or expired
+          content:
+            text/html:
+              schema:
+                type: string
+        '424':
+          description: external API could not compute the output
+          content:
+            text/html:
+              schema:
+                type: string
+        '429':
+          description: too many requests issued in configured time according to supplied JWT
+          content:
+            text/html:
+              schema:
+                type: string
+                
+  /token:
+    get:
+      tags:
+        - all
+      summary: Creates new API key and saves it into httponly cookie
+      parameters:
+        - in: query
+          name: seconds
+          description: lifetime of created JWT in seconds
+          required: false
+          schema:
+            type: number
+        - in: query
+          name: rateLimit
+          description: limit of subsequent requests that can be made using this JWT
+          required: false
+          schema:
+            type: number
+      responses:
+        '200':
+          description: status info about success of creating new JWT
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                    description: success of JWT creation

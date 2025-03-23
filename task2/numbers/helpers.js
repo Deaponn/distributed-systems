@@ -37,6 +37,8 @@ const parenthesisCharacters = "()";
 const validCharacters = numberCharacters + operationCharacters + parenthesisCharacters;
 
 export const validateInput = (input) => {
+    if (input == undefined) return [false, "Brakuje parametru zapytania 'equation='"];
+
     let openParenthesis = 0;
     if (!validCharacters.includes(input[0]))
         return [false, `Wyrażenie zawiera nielegalny symbol: '${input[0]}' pod indeksem 0`];

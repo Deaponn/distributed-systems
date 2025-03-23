@@ -18,12 +18,12 @@ const { parsed: env } = dotenv.config();
 
 const secret = env.SERVER_SECRET;
 const genAI = new GoogleGenerativeAI(env.GEMINI_API_KEY);
-const model = genAI.getGenerativeModel({ model: "gemini-1.5-flash" });
+const model = env.GEMINI_API_KEY != "none" ? genAI.getGenerativeModel({ model: "gemini-1.5-flash" }) : null;
 
 const rateLimitter = new RateLimitter(env.RATE_LIMIT, env.PURGE_TIME);
 
 const app = express();
-const port = 3000;
+const port = env.API_PORT;
 
 app.use(express.static("public"));
 app.use(cookieParser());
@@ -46,16 +46,19 @@ app.use("/result", (req, res, next) => {
     const tokenUrl = `${req.protocol}://${req.get('host')}/`;
 
     if (req.cookies.jwt == undefined) {
+        res.status(401);
         return res.render("failure", { errorCode: 401, errorMessage: `Nie masz dostępu do tej strony. Zdobądź klucz do API pod adresem ${tokenUrl}.` })
     }
 
     const [success, jwt] = validateToken(req.cookies.jwt, secret);
 
     if (!success) {
+        res.status(401);
         return res.render("failure", { errorCode: 401, errorMessage: `Nie masz dostępu do tej strony. ${jwt.error}. Zdobądź klucz do API pod adresem ${tokenUrl}.` })
     }
 
     if (!rateLimitter.rateRequest(jwt)) {
+        res.status(429);
         return res.render("failure", { errorCode: 429, errorMessage: `Nie masz dostępu do tej strony. Przekroczono limit ${jwt.rateLimit} zapytań na ${env.RATE_LIMIT} sekund.` })
     }
 
@@ -103,15 +106,15 @@ async function computeResult(equation, res) {
 
     const { result } = await query.json();
 
-    if (!query.ok || result.includes("?")) {
-        res.status(400);
+    if (!query.ok || result.includes("?") || result.includes(":")) {
+        res.status(424);
         return res.render("failure", {
-            errorCode: 400,
+            errorCode: 424,
             errorMessage: "Zewnętrzny serwis nie mógł obliczyć wyniku",
         });
     }
 
-    const sanitizedResult = !Number.isNaN(Number(result)) ? Number(result) : 5;
+    const sanitizedResult = !Number.isNaN(Number(eval(result))) ? Number(eval(result)) : 5;
     const wholeResult = Math.round(sanitizedResult);
     const naturalResult = Math.abs(wholeResult);
 
@@ -142,12 +145,11 @@ async function computeResult(equation, res) {
     Niech historyjka będzie po polsku, niezbyt długa. Do 5 zdań.
     `;
 
-    const output = await model.generateContent(prompt);
-    const story = output.response.text();
+    const output = model ? await model.generateContent(prompt) : null;
+    const story = output ? output.response.text() : "Brak historyjki";
 
     const disclaimer = Number.isNaN(Number(result))
-        ? `Do dalszych zapytań API wykorzystano liczbę ${wholeResult},
-        ponieważ wynik zwrócony pierwszym zapytaniem daje NaN przy użyciu Number(result)`
+        ? `Do dalszych zapytań API wykorzystano liczbę ${wholeResult}, ponieważ wynik nie jest liczbą całkowitą`
         : "";
 
     res.render("result", {
