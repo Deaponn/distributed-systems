@@ -1,4 +1,5 @@
 import express from "express";
+import cookieParser from "cookie-parser";
 import { engine } from "express-handlebars";
 import dotenv from "dotenv";
 import { GoogleGenerativeAI } from "@google/generative-ai";
@@ -8,11 +9,13 @@ import {
     validateInput,
     applyElementwise,
     parseFact,
-    parseIsEven
+    parseIsEven,
 } from "./helpers.js";
+import { createToken, validateToken } from "./cryptography.js";
 
 const { parsed: env } = dotenv.config();
 
+const secret = env.SERVER_SECRET;
 const genAI = new GoogleGenerativeAI(env.GEMINI_API_KEY);
 const model = genAI.getGenerativeModel({ model: "gemini-1.5-flash" });
 
@@ -20,6 +23,7 @@ const app = express();
 const port = 3000;
 
 app.use(express.static("public"));
+app.use(cookieParser());
 
 app.engine(
     ".hbs",
@@ -31,7 +35,25 @@ app.engine(
 app.set("view engine", ".hbs");
 
 app.get("/", (req, res) => {
-    res.render("index");
+    const tokenUrl = `${req.protocol}://${req.get('host')}/token`;
+    res.render("index", { tokenUrl });
+});
+
+app.use("/result", (req, res, next) => {
+    const tokenUrl = `${req.protocol}://${req.get('host')}/`;
+
+    if (req.cookies.jwt == undefined) {
+        return res.render("failure", { errorCode: 401, errorMessage: `Nie masz dostępu do tej strony. Zdobądź klucz do API pod adresem ${tokenUrl}.` })
+    }
+
+    const [success, jwt] = validateToken(req.cookies.jwt, secret);
+
+    if (!success) {
+        return res.render("failure", { errorCode: 401, errorMessage: `Nie masz dostępu do tej strony. ${jwt.error}. Zdobądź klucz do API pod adresem ${tokenUrl}.` })
+    }
+
+    req.jwt = jwt;
+    next();
 });
 
 app.get("/result", (req, res) => {
@@ -43,6 +65,25 @@ app.get("/result", (req, res) => {
     computeResult(req.query.equation, res);
 });
 
+app.get("/token", (req, res) => {
+    const validFor = (req.query.seconds ?? 300) * 1000; // in miliseconds
+    const rateLimit = req.query.rateLimit ?? 10;
+    const now = Date.now();
+    const jwt = {
+        iat: now,
+        eat: now + validFor,
+        rateLimit,
+    };
+
+    const cookieOptions = {
+        httpOnly: true,
+        secure: true,
+        sameSite: true,
+        expires: new Date(now + 2 * validFor)
+    };
+    res.type("application/json").cookie("jwt", createToken(jwt, secret), cookieOptions).send({ success: true });
+});
+
 app.listen(port, () => {
     console.log(`Application is up and running on port ${port}`);
 });
@@ -51,9 +92,9 @@ async function computeResult(equation, res) {
     const query = await fetch(
         `https://newton.now.sh/api/v2/simplify/${encodeURIComponent(equation)}`
     );
-    
+
     const { result } = await query.json();
-    
+
     if (!query.ok || result.includes("?")) {
         res.status(400);
         return res.render("failure", {
@@ -82,7 +123,7 @@ async function computeResult(equation, res) {
             parseFact,
             parseFact,
             parseFact,
-            parseIsEven
+            parseIsEven,
         ])
     );
 
