@@ -22,8 +22,9 @@ option objc_class_prefix = "NS";
 package notifications;
 
 message SubscriptionDetails {
-  string place = 1;
-  Sport sport = 2;
+  string subscriberId = 1;
+  string place = 2;
+  Sport sport = 3;
 }
 
 message Player {
@@ -32,11 +33,12 @@ message Player {
 }
 
 enum Sport {
-  TENNIS = 0;
-  FOOTBALL = 1;
-  VOLLEYBALL = 2;
-  BASKETBALL = 3;
-  RUNNING = 4;
+  ALL = 0;
+  TENNIS = 1;
+  FOOTBALL = 2;
+  VOLLEYBALL = 3;
+  BASKETBALL = 4;
+  RUNNING = 5;
 }
 
 message EventInfo {
@@ -46,8 +48,8 @@ message EventInfo {
   repeated Player players = 4;
 }
 
-// The greeting service definition.
+// The event notification service definition.
 service EventNotifications {
-  // Sends a greeting
-  rpc SubscribeTo (SubscriptionDetails) returns (stream EventInfo) {}
+  // Subscribes to events about certain sport events in an area
+  rpc SubscribeTo (stream SubscriptionDetails) returns (stream EventInfo) {}
 }

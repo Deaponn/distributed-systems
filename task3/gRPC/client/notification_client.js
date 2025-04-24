@@ -20,33 +20,68 @@ const messages = require("./notifications_pb.js");
 const services = require("./notifications_grpc_pb.js");
 
 const grpc = require("@grpc/grpc-js");
+const readline = require("readline");
+
+const rl = readline.createInterface({
+    input: process.stdin,
+    output: process.stdout,
+    terminal: false,
+});
+
+rl.once("close", () => {
+    // hit CTRL-D for linux to end process, CTRL-Z for windows
+    console.log("end of input");
+});
 
 function main() {
     const target = "localhost:50051";
     const client = new services.EventNotificationsClient(target, grpc.credentials.createInsecure());
-    const request = new messages.SubscriptionDetails();
-    request.setPlace("Krakow");
-    request.setSport(2);
-    
-    var call = client.subscribeTo(request);
-    call.on('data', function(feature) {
-        console.log("data");
-        console.log(feature);
+    const subscriberId = "user";
+
+    const call = client.subscribeTo(function (error, obj) {
+        if (error) {
+            callback(error);
+        }
+        console.log(obj);
     });
-    call.on('end', function(e) {
+
+    call.on("data", function (feature) {
+        console.log("data");
+        console.log(feature.getPrize());
+    });
+
+    call.on("end", function () {
         // The server has finished sending
         console.log("end");
-        console.log(e);
     });
-    call.on('error', function(e) {
+
+    call.on("error", function (e) {
         // An error has occurred and the stream has been closed.
         console.log("error");
         console.log(e);
     });
-    call.on('status', function(status) {
+
+    call.on("status", function (status) {
         // process status
         console.log("status");
         console.log(status);
+    });
+
+    rl.on("line", (line) => {
+        if (line === "stop") {
+            call.end();
+            rl.close();
+            return;
+        }
+
+        const [place, sport] = line.split(" ");
+
+        const request = new messages.SubscriptionDetails();
+        request.setSubscriberid(subscriberId);
+        request.setPlace(place);
+        request.setSport(Number(sport));
+
+        call.write(request);
     });
 }
 

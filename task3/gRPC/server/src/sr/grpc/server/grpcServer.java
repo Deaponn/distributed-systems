@@ -1,15 +1,16 @@
 package sr.grpc.server;
 
 import java.io.IOException;
-import java.net.InetAddress;
-import java.net.InetSocketAddress;
-import java.net.SocketAddress;
-import java.net.UnknownHostException;
 import java.util.concurrent.Executors;
 import java.util.logging.Logger;
 
 import io.grpc.Server;
 import io.grpc.ServerBuilder;
+import sr.grpc.gen.EventInfo;
+import sr.grpc.gen.Player;
+import sr.grpc.gen.Sport;
+
+import static java.lang.Thread.sleep;
 
 
 public class grpcServer 
@@ -24,14 +25,12 @@ public class grpcServer
 		String address = "127.0.0.1";
 		int port = 50051;
 
-		try {
-			SocketAddress socket = new InetSocketAddress(InetAddress.getByName(address), port);
-		} catch(UnknownHostException e) {};
+		NotificationService notificationService = new NotificationService();
 
 		//You will want to employ flow-control so that the queue doesn't blow up your memory. You can cast StreamObserver to CallStreamObserver to get flow-control API
 		server = ServerBuilder.forPort(50051).executor((Executors.newFixedThreadPool(16)))
 				//NettyServerBuilder.forAddress(socket).executor(Executors.newFixedThreadPool(16))
-				.addService(new NotificationService())
+				.addService(notificationService)
 				.build()
 				.start();
 		logger.info("Server started, listening on " + port);
@@ -44,6 +43,22 @@ public class grpcServer
 				System.err.println("Server shut down.");
 			}
 		});
+
+		while (true) {
+			EventInfo result = EventInfo.newBuilder()
+					.setPlace("street")
+					.addPlayers(Player.newBuilder().setName("tomek").setNumber(3).build())
+					.addPlayers(Player.newBuilder().setName("tomek2").setNumber(4).build())
+					.addPlayers(Player.newBuilder().setName("tomek3").setNumber(5).build())
+					.setSport(Sport.BASKETBALL)
+					.setPrize(300)
+					.build();
+			notificationService.sendEventInfo("krakow", Sport.FOOTBALL, result);
+
+			try {
+				sleep(1000);
+			} catch (InterruptedException ignored) {}
+		}
 	}
 
 	private void stop() {
