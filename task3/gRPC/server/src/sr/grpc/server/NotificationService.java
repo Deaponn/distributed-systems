@@ -6,25 +6,35 @@ import sr.grpc.gen.EventNotificationsGrpc.EventNotificationsImplBase;
 import sr.grpc.gen.Sport;
 import sr.grpc.gen.SubscriptionDetails;
 
-import java.util.LinkedList;
+import java.util.HashMap;
 
 public class NotificationService extends EventNotificationsImplBase {
-    private final LinkedList<Client> clients = new LinkedList<>();
+    private final HashMap<String, Client> clients = new HashMap<>();
 
-    public void sendEventInfo(String place, Sport sport, EventInfo eventInfo) {
-        for (Client client : this.clients) {
-            client.sendIfInterested(place, sport, eventInfo);
+    public void sendEventInfo(EventInfo eventInfo) {
+        for (Client client : this.clients.values()) {
+            client.sendIfInterested(eventInfo);
         }
     }
 
-    public void killClient(Client client) {
-        this.clients.remove(client);
+    public void killClient(String id) {
+        clients.remove(id);
+    }
+
+    public void registerClient(String id, Client newClient) {
+        if (clients.containsKey(id)) {
+            Client oldClient = clients.get(id);
+            newClient.setSubscriptions(oldClient.getSubscriptions());
+            for (EventInfo event : oldClient.getDisconnectedBuffer()) {
+                newClient.sendIfInterested(event);
+            }
+        }
+        clients.put(id, newClient);
     }
 
     @Override
     public StreamObserver<SubscriptionDetails> subscribeTo(final StreamObserver<EventInfo> responseObserver) {
-        Client client = new Client(responseObserver, this);
-        this.clients.add(client);
-        return client;
+        System.out.println("new client");
+        return new Client(responseObserver, this);
     }
 }

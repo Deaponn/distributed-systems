@@ -33,12 +33,11 @@ message Player {
 }
 
 enum Sport {
-  ALL = 0;
-  TENNIS = 1;
-  FOOTBALL = 2;
-  VOLLEYBALL = 3;
-  BASKETBALL = 4;
-  RUNNING = 5;
+  TENNIS = 0;
+  FOOTBALL = 1;
+  VOLLEYBALL = 2;
+  BASKETBALL = 3;
+  RUNNING = 4;
 }
 
 message EventInfo {
@@ -46,6 +45,7 @@ message EventInfo {
   string place = 2;
   Sport sport = 3;
   repeated Player players = 4;
+  repeated SubscriptionDetails subscriptions = 5;
 }
 
 // The event notification service definition.

@@ -2,6 +2,7 @@ package sr.grpc.server;
 
 import java.io.IOException;
 import java.util.concurrent.Executors;
+import java.util.concurrent.TimeUnit;
 import java.util.logging.Logger;
 
 import io.grpc.Server;
@@ -31,6 +32,8 @@ public class grpcServer
 		server = ServerBuilder.forPort(50051).executor((Executors.newFixedThreadPool(16)))
 				//NettyServerBuilder.forAddress(socket).executor(Executors.newFixedThreadPool(16))
 				.addService(notificationService)
+				.keepAliveTime(5, TimeUnit.SECONDS)
+				.keepAliveTimeout(1, TimeUnit.SECONDS)
 				.build()
 				.start();
 		logger.info("Server started, listening on " + port);
@@ -44,21 +47,7 @@ public class grpcServer
 			}
 		});
 
-		while (true) {
-			EventInfo result = EventInfo.newBuilder()
-					.setPlace("street")
-					.addPlayers(Player.newBuilder().setName("tomek").setNumber(3).build())
-					.addPlayers(Player.newBuilder().setName("tomek2").setNumber(4).build())
-					.addPlayers(Player.newBuilder().setName("tomek3").setNumber(5).build())
-					.setSport(Sport.BASKETBALL)
-					.setPrize(300)
-					.build();
-			notificationService.sendEventInfo("krakow", Sport.FOOTBALL, result);
-
-			try {
-				sleep(1000);
-			} catch (InterruptedException ignored) {}
-		}
+		new EventGenerator(notificationService);
 	}
 
 	private void stop() {
