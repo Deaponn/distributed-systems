@@ -1,0 +1,4 @@
+*.exe
+*_pb.js
+gen/
+out/

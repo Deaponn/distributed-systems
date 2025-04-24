@@ -1,0 +1,1 @@
+protoc -I.. --java_out=gen --plugin=protoc-gen-grpc-java=$(pwd)/protoc-java-plugin.exe --grpc-java_out=gen notifications.proto

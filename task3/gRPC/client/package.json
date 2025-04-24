@@ -1,0 +1,19 @@
+{
+    "name": "grpc-examples",
+    "version": "0.1.0",
+    "scripts": {
+        "prestart": "npm run build-grpc",
+        "start": "node notification_client.js",
+        "build-grpc": "grpc_tools_node_protoc -I.. --js_out=import_style=commonjs,binary:. --grpc_out=grpc_js:. ../notifications.proto"
+    },
+    "dependencies": {
+        "@grpc/grpc-js": "^1.8.0",
+        "@grpc/grpc-js-xds": "^1.8.0",
+        "@grpc/proto-loader": "^0.6.0",
+        "async": "^1.5.2",
+        "google-protobuf": "^3.0.0"
+    },
+    "devDependencies": {
+        "grpc-tools": "^1.13.0"
+    }
+}

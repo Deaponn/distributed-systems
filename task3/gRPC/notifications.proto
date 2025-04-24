@@ -1,0 +1,53 @@
+// Copyright 2015 gRPC authors.
+//
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
+//
+//     http://www.apache.org/licenses/LICENSE-2.0
+//
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
+
+syntax = "proto3";
+
+option java_multiple_files = true;
+option java_package = "sr.grpc.gen";
+option java_outer_classname = "Notifications";
+option objc_class_prefix = "NS";
+
+package notifications;
+
+message SubscriptionDetails {
+  string place = 1;
+  Sport sport = 2;
+}
+
+message Player {
+  string name = 1;
+  int32 number = 2;
+}
+
+enum Sport {
+  TENNIS = 0;
+  FOOTBALL = 1;
+  VOLLEYBALL = 2;
+  BASKETBALL = 3;
+  RUNNING = 4;
+}
+
+message EventInfo {
+  int32 prize = 1;
+  string place = 2;
+  Sport sport = 3;
+  repeated Player players = 4;
+}
+
+// The greeting service definition.
+service EventNotifications {
+  // Sends a greeting
+  rpc SubscribeTo (SubscriptionDetails) returns (stream EventInfo) {}
+}
