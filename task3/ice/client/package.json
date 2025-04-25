@@ -1,0 +1,9 @@
+{
+  "dependencies": {
+    "ice": "^3.7.100"
+  },
+  "scripts": {
+    "prestart": "slice2js --output-dir . ../calculator.ice",
+    "start": "node client.js"
+  }
+}
