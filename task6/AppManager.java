@@ -1,6 +1,7 @@
 import org.apache.zookeeper.*;
 import org.apache.zookeeper.data.Stat;
 
+import java.awt.*;
 import java.io.IOException;
 import java.util.Collections;
 import java.util.List;
@@ -54,7 +55,16 @@ public class AppManager implements Watcher {
     public void process(WatchedEvent event) {
         System.out.println("WATCHER TRIGGERED: " + event);
 
-        if (event.getType() == Event.EventType.None) return;
+        if (event.getType() == Event.EventType.None) {
+            if (event.getState() == Event.KeeperState.SyncConnected) {
+                System.out.println("Successfully connected to ZooKeeper.");
+                connectedSignal.countDown();
+            } else if (event.getState() == Event.KeeperState.Expired) {
+                System.err.println("ZooKeeper session expired. Shutting down.");
+                shutdown();
+            }
+            return;
+        }
 
         String path = event.getPath();
         if (path != null && path.equals(ZNODE_A)) {
@@ -91,18 +101,16 @@ public class AppManager implements Watcher {
     }
 
     private void stopExternalApp() {
-        if (externalAppProcess == null) {
-            return;
-        }
+        if (externalAppProcess == null) return;
 
         ProcessHandle handle = externalAppProcess.toHandle();
         handle.descendants().forEach(ProcessHandle::destroy);
         handle.children().forEach(ProcessHandle::destroy);
-        if (handle.isAlive()) {
-            handle.destroy();
-        }
+
+        if (handle.isAlive()) handle.destroy();
 
         externalAppProcess = null;
+        System.out.println("Termination sequence complete.");
     }
 
     private void listenForUserInput() {
@@ -123,6 +131,10 @@ public class AppManager implements Watcher {
 
     private void displayTree(String path, String indent) {
         try {
+            if (zk.exists(path, false) == null) {
+                System.out.println(indent + path + " [DOES NOT EXIST]");
+                return;
+            }
             System.out.println(indent + path);
             List<String> children = zk.getChildren(path, false);
             Collections.sort(children);
@@ -150,6 +162,8 @@ public class AppManager implements Watcher {
             System.err.println("EXAMPLE: java AppManager \"host1:2181,host2:2182\" /usr/bin/kate");
             System.exit(1);
         }
+
+        System.out.println("Starting AppManager at " + java.time.LocalDateTime.now());
 
         try {
             AppManager manager = new AppManager(args[0], args[1]);
